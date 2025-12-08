@@ -1,0 +1,4 @@
+.env
+storage_state.json
+jobs_export.json
+*.pyc
