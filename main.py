@@ -56,24 +56,38 @@ def run():
             mapped_exps = [exp_mapping.get(e, "") for e in raw_exp if e in exp_mapping]
             exp_param = ",".join(filter(None, mapped_exps))
             
+            headless_mode = config.get("headless", True)
+            
     except FileNotFoundError:
         print("config.yml not found. Using defaults.")
         keywords = "DevOps"
         location = "Germany"
         date_param = "r604800"
         exp_param = ""
+        headless_mode = True
 
     with sync_playwright() as p:
-        # Launch browser with saved state
-        browser = p.chromium.launch(headless=False)
+        # Launch browser with saved state and robust flags
+        browser = p.chromium.launch(
+            headless=headless_mode,
+            args=["--disable-blink-features=AutomationControlled"]
+        )
         
         try:
-            context = browser.new_context(storage_state=STORAGE_STATE)
+            # Set User Agent to mimic real browser and proper viewport
+            context = browser.new_context(
+                storage_state=STORAGE_STATE,
+                user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                viewport={'width': 1280, 'height': 800}
+            )
         except Exception as e:
             print(f"Error loading storage state: {e}")
             return "RETRY_LOGIN"
 
         page = context.new_page()
+
+        # Add webdriver property removal script
+        page.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
 
         print("Navigating to LinkedIn Jobs...")
         page.goto("https://www.linkedin.com/jobs/search")
@@ -167,6 +181,12 @@ def run():
             print(f"Found {len(card_locators)} jobs on this page.")
             
             if not card_locators:
+                print("No cards found. Saving debug info...")
+                page.screenshot(path="debug_headless.png")
+                with open("debug_headless.html", "w", encoding="utf-8") as f:
+                    f.write(page.content())
+                print(f"Debug saved to debug_headless.png and debug_headless.html")
+                print(f"Current Title: {page.title()}")
                 print("No cards found after waiting. Moving to next page or finishing.")
                 break
 
