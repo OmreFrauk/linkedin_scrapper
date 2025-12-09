@@ -1,8 +1,10 @@
 import os
 import time
 from playwright.sync_api import sync_playwright
+from dotenv import load_dotenv
 
 def login():
+    load_dotenv()
     username = os.environ.get("LINKEDIN_USERNAME")
     password = os.environ.get("LINKEDIN_PASSWORD")
 
@@ -11,12 +13,19 @@ def login():
         return 
 
     with sync_playwright() as p:
-        # Launch browser (headless=False so we can see what's happening if needed, 
-        # but user might want it headless later. For login, usually better to show it 
-        # or at least helpful for debugging).
-        browser = p.chromium.launch(headless=False) 
-        context = browser.new_context()
+        # Launch browser with robust flags for headless
+        browser = p.chromium.launch(
+            headless=True,
+            args=["--disable-blink-features=AutomationControlled"]
+        ) 
+        context = browser.new_context(
+            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            viewport={'width': 1280, 'height': 800}
+        )
         page = context.new_page()
+        
+        # Add webdriver property removal script
+        page.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
 
         print("Navigating to LinkedIn login page...")
         page.goto("https://www.linkedin.com/login")
@@ -41,9 +50,11 @@ def login():
             
         except Exception as e:
             print(f"Login failed or required manual intervention (CAPTCHA/2FA). Error: {e}")
-            # If we timed out, it might be a captcha. 
-            # We could keep the browser open for a bit to see what happened?
-            # But for now, just exit.
+            print("Saving debug info...")
+            page.screenshot(path="debug_login.png")
+            with open("debug_login.html", "w", encoding="utf-8") as f:
+                f.write(page.content())
+            print(f"Debug saved to debug_login.png and debug_login.html")
 
         browser.close()
 

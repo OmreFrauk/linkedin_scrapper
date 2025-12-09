@@ -2,3 +2,5 @@
 storage_state.json
 jobs_export.json
 *.pyc
+*.png
+*.html
