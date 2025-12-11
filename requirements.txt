@@ -1,2 +1,8 @@
 playwright
 beautifulsoup4
+fastapi
+uvicorn
+pydantic
+python-dotenv
+pyyaml
+httpx

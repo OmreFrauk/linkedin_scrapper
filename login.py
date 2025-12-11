@@ -1,16 +1,19 @@
 import os
 import time
+import json
+import tempfile
 from playwright.sync_api import sync_playwright
 from dotenv import load_dotenv
 
-def login():
-    load_dotenv()
-    username = os.environ.get("LINKEDIN_USERNAME")
-    password = os.environ.get("LINKEDIN_PASSWORD")
+def login(username=None, password=None):
+    if not username or not password:
+        load_dotenv()
+        username = username or os.environ.get("LINKEDIN_USERNAME")
+        password = password or os.environ.get("LINKEDIN_PASSWORD")
 
     if not username or not password:
-        print("Error: LINKEDIN_USERNAME and LINKEDIN_PASSWORD environment variables must be set.")
-        return 
+        print("Error: LINKEDIN_USERNAME and LINKEDIN_PASSWORD must be provided or set in environment variables.")
+        return None
 
     with sync_playwright() as p:
         # Launch browser with robust flags for headless
@@ -44,9 +47,18 @@ def login():
             page.wait_for_selector(".global-nav__content", timeout=15000)
             print("Login successful!")
             
-            # Save storage state
-            context.storage_state(path="storage_state.json")
-            print("Session saved to storage_state.json")
+            # Save storage state to a temporary file correctly to read it back into memory
+            # or use context.storage_state() which usually returns the dict directly or writes to path?
+            # context.storage_state(path=...) writes to file.
+            # But context.storage_state() without path argument returns the state as a DICT!
+            
+            state = context.storage_state()
+            
+            # Check if local run requested to save file
+            # For API usage we might not want to save to disk essentially, but for 'run()' it expected a file.
+            # But here we are just returning the state.
+            
+            return state
             
         except Exception as e:
             print(f"Login failed or required manual intervention (CAPTCHA/2FA). Error: {e}")
@@ -55,8 +67,14 @@ def login():
             with open("debug_login.html", "w", encoding="utf-8") as f:
                 f.write(page.content())
             print(f"Debug saved to debug_login.png and debug_login.html")
+            return None
 
-        browser.close()
+        finally:
+            browser.close()
 
 if __name__ == "__main__":
-    login()
+    state = login()
+    if state:
+        with open("storage_state.json", "w") as f:
+            json.dump(state, f)
+        print("Session saved to storage_state.json")

@@ -1,0 +1,9 @@
+version: '3.8'
+
+services:
+  linkedin-scraper:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./storage_state.json:/app/storage_state.json # Persist login state
