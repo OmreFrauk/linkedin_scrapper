@@ -5,3 +5,4 @@ experience_level:
   - "entry_level"
   - "associate"
 headless: true
+pages_to_scrape: 2
