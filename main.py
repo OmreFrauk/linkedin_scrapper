@@ -96,6 +96,7 @@ def run(keywords="DevOps", location="Germany", date_posted="past_week", experien
         # For now, just go to search
         
         jobs_data = []
+        print("Starting pagination loop...")
 
         # PAGINATION LOOP: 5 Pages, approx 25 jobs per page (Limit for API response time?)
         # Reduced to 2 pages for faster API response during testing, or keep user default?
@@ -119,6 +120,8 @@ def run(keywords="DevOps", location="Germany", date_posted="past_week", experien
                 print(f"No job cards found on page {page_num + 1}. Ending scrape.")
                 break
             
+            print(f"Page {page_num + 1} loaded. Starting scroll...")
+            
             time.sleep(random.uniform(2, 4))
             
             # Scroll logic
@@ -130,14 +133,19 @@ def run(keywords="DevOps", location="Germany", date_posted="past_week", experien
                 count = len(card_locators)
                 
                 if count >= 25 or scroll_attempts >= max_scroll_attempts:
+                    print(f"Scrolling finished. Found {count} job cards (Attempts: {scroll_attempts}).")
                     break
                     
                 # Scroll the list container using JS
                 try:
                      page.evaluate("""
                         var selectors = [
-                            '.ygleTEnWHLfoUkWsvDaalKdfNRUTyfmJHwk', 
-                            '.scaffold-layout__list', 
+                            '.PfaZBQjnUYgmiwbArDngwzNxUcNgfhpoTM',
+                            '.vNNioWCWAlCflKqeMSIByDWvDXhAUVPeqE',
+                            'ul.scaffold-layout__list-container',
+                            'ul.jobs-search__results-list',
+                            '.ygleTEnWHLfoUkWsvDaalKdfNRUTyfmJHwk',
+                            '.scaffold-layout__list',
                             '.jobs-search-results-list'
                         ];
                         for (var i = 0; i < selectors.length; i++) {
@@ -164,14 +172,17 @@ def run(keywords="DevOps", location="Germany", date_posted="past_week", experien
             for i, card in enumerate(card_locators):
                 # Only process limited amount if needed
                 global_index = len(jobs_data) + 1
+                print(f"Processing job {i+1}/{len(card_locators)} (Total Scraped: {len(jobs_data)})...")
                 
                 try:
                     # Scroll to card
                     card.scroll_into_view_if_needed()
                     try:
                         card.click()
+                        print("  Clicked job card.")
                     except:
                         card.click(force=True)
+                        print("  Clicked job card (Force).")
                     
                     time.sleep(random.uniform(0.5, 1.5)) # Reduced sleep slightly for API speed
                     
@@ -179,6 +190,7 @@ def run(keywords="DevOps", location="Germany", date_posted="past_week", experien
                     try:
                         page.wait_for_selector(".job-details-jobs-unified-top-card__job-title, .top-card-layout__title", timeout=3000)
                     except:
+                        print("  Timeout waiting for job details to load.")
                         continue
 
                     # Extract Data
@@ -219,6 +231,7 @@ def run(keywords="DevOps", location="Germany", date_posted="past_week", experien
                     }
                     
                     jobs_data.append(job_data)
+                    print(f"  Successfully scraped: {title} at {company}")
                     # print(f"Scraped: {title} at {company}")
                         
                 except Exception as e:
