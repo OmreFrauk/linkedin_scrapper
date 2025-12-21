@@ -14,6 +14,7 @@ class ScrapeRequest(BaseModel):
     location: str = "Germany"
     date_posted: str = "past_week"
     experience_level: Optional[List[str]] = None
+    pages_to_scrape: Optional[int] = 2
     storage_state: dict # The actual JSON content of storage_state
 
 @app.post("/scrape")
@@ -39,7 +40,8 @@ def scrape_jobs(request: ScrapeRequest):
             date_posted=request.date_posted,
             experience_level=request.experience_level,
             storage_state_path=tmp_state_path,
-            headless=True 
+            headless=True,
+            pages_to_scrape=request.pages_to_scrape
         )
         
         # Cleanup

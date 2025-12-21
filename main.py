@@ -8,7 +8,7 @@ import tempfile
 from playwright.sync_api import sync_playwright
 import login
 
-def run(keywords="DevOps", location="Germany", date_posted="past_week", experience_level=None, storage_state_path=None, headless=True):
+def run(keywords="DevOps", location="Germany", date_posted="past_week", experience_level=None, storage_state_path=None, headless=True, pages_to_scrape=2):
     """
     Scrapes LinkedIn jobs based on provided parameters.
     
@@ -100,7 +100,7 @@ def run(keywords="DevOps", location="Germany", date_posted="past_week", experien
         # PAGINATION LOOP: 5 Pages, approx 25 jobs per page (Limit for API response time?)
         # Reduced to 2 pages for faster API response during testing, or keep user default?
         # Let's keep it robust but maybe limit implicitly or add a 'max_pages' arg later.
-        max_pages = 2 
+        max_pages = pages_to_scrape 
         
         for page_num in range(max_pages):
             start_offset = page_num * 25
@@ -239,13 +239,14 @@ if __name__ == "__main__":
             dp = config.get("date_posted", "past_week")
             ex = config.get("experience_level", [])
             h = config.get("headless", True)
+            p = config.get("pages_to_scrape", 2)
     except:
-        k, l, dp, ex, h = "DevOps", "Germany", "past_week", [], True
+        k, l, dp, ex, h, p = "DevOps", "Germany", "past_week", [], True, 2
         
     # Local storage state defaults to "storage_state.json"
     s_path = "storage_state.json"
     
-    results = run(k, l, dp, ex, s_path, h)
+    results = run(k, l, dp, ex, s_path, h, p)
     
     # Save to file for local run compatibility
     with open("jobs_export.json", "w", encoding="utf-8") as f:
