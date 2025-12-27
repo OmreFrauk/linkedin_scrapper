@@ -113,9 +113,10 @@ def run(keywords="DevOps", location="Germany", date_posted="past_week", experien
             
             page.goto(search_url)
             
+            
             # Wait for list to load
             try:
-                page.wait_for_selector(".job-card-container", timeout=10000)
+                page.wait_for_selector(".job-card-list", timeout=10000)
             except:
                 print(f"No job cards found on page {page_num + 1}. Ending scrape.")
                 break
@@ -129,7 +130,7 @@ def run(keywords="DevOps", location="Germany", date_posted="past_week", experien
             max_scroll_attempts = 10
             
             while True:
-                card_locators = page.locator(".job-card-container").all()
+                card_locators = page.locator(".job-card-list").all()
                 count = len(card_locators)
                 
                 if count >= 25 or scroll_attempts >= max_scroll_attempts:
@@ -138,27 +139,27 @@ def run(keywords="DevOps", location="Germany", date_posted="past_week", experien
                     
                 # Scroll the list container using JS
                 try:
-                     page.evaluate("""
-                        var selectors = [
-                            '.PfaZBQjnUYgmiwbArDngwzNxUcNgfhpoTM',
-                            '.vNNioWCWAlCflKqeMSIByDWvDXhAUVPeqE',
-                            'ul.scaffold-layout__list-container',
-                            'ul.jobs-search__results-list',
-                            '.ygleTEnWHLfoUkWsvDaalKdfNRUTyfmJHwk',
-                            '.scaffold-layout__list',
-                            '.jobs-search-results-list'
-                        ];
-                        for (var i = 0; i < selectors.length; i++) {
-                            var list = document.querySelector(selectors[i]);
-                            if (list) {
-                                list.scrollBy(0, 300);
-                                break;
+                    handle = page.locator("div[class*='bCCrUjw']") 
+
+                    # Yöntem B: İlk görünür listeyi al ve scroll et
+                    # Bu yöntem, o karmaşık isme ihtiyaç duymadan sayfadaki görünür ilk listeyi hedefler.
+                    page.evaluate("""() => {
+                        // Sayfadaki tüm divleri gez, scrollable olanı bul
+                        const allDivs = document.querySelectorAll('div');
+                        for (const div of allDivs) {
+                            const style = window.getComputedStyle(div);
+                            // Overflow özelliği auto veya scroll olanı bul
+                            if (style.overflowY === 'auto' || style.overflowY === 'scroll') {
+                                if (div.scrollHeight > div.clientHeight) { // Gerçekten scroll edilebilir mi?
+                                    div.scrollTop += 300;
+                                    return; // İlk bulduğunda işlemi bitir
+                                }
                             }
                         }
-                    """)
+                    }""")
                 except:
                     pass
-                    
+
                 page.mouse.wheel(0, 300)
                 time.sleep(0.5)
                 scroll_attempts += 1
@@ -214,6 +215,47 @@ def run(keywords="DevOps", location="Germany", date_posted="past_week", experien
                     except:
                         description = "Error extracting description"
                         
+                    # --- REFINED LOGIC: TEXT-BASED DETECTION ---
+                    is_easy_apply = False
+                    external_apply_link = None
+                    
+                    try:
+                        # Find the apply button in the top card
+                        # Selectors for the apply button container/button
+                        apply_button_selector = ".jobs-apply-button--top-card button, .jobs-s-apply button, #jobs-apply-button-id"
+                        apply_button = page.locator(apply_button_selector).first
+                        
+                        if apply_button.is_visible():
+                            button_text = apply_button.inner_text().lower()
+                            print(f"  Found apply button with text: '{button_text}'")
+                            
+                            # Check if it's "Easy Apply" or "Kolay Başvuru"
+                            if "easy apply" in button_text or "kolay başvuru" in button_text:
+                                is_easy_apply = True
+                                print("  Identified as Easy Apply.")
+                            # Check if it's "Apply" or "Uygula"
+                            elif "apply" in button_text or "uygula" in button_text:
+                                is_easy_apply = False
+                                print("  Identified as External Apply. Attempting to get link...")
+                                
+                                # LinkedIn external buttons often open in a new tab
+                                try:
+                                    with context.expect_page(timeout=10000) as new_page_info:
+                                        apply_button.click()
+                                    new_page = new_page_info.value
+                                    new_page.wait_for_load_state()
+                                    external_apply_link = new_page.url
+                                    print(f"  Extracted external link: {external_apply_link}")
+                                    new_page.close()
+                                except Exception as e:
+                                    print(f"  Failed to capture external link: {e}")
+                            else:
+                                print(f"  Unknown button text: {button_text}")
+                        else:
+                            print("  No apply button visible on top card.")
+                    except Exception as e:
+                        print(f"  Error in application detection logic: {e}")
+
                     try:
                          # Current URL often changes to the job ID view
                         job_url = page.url 
@@ -227,6 +269,8 @@ def run(keywords="DevOps", location="Germany", date_posted="past_week", experien
                         "description_snippet": description[:200] + "...", 
                         "description": description,
                         "job_url": job_url,
+                        "is_easy_apply": is_easy_apply,
+                        "external_apply_link": external_apply_link,
                         "scraped_at": time.strftime("%Y-%m-%d %H:%M:%S")
                     }
                     
