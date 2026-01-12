@@ -234,7 +234,7 @@ def run(keywords="DevOps", location="Germany", date_posted="past_week", experien
                                 is_easy_apply = True
                                 print("  Identified as Easy Apply.")
                             # Check if it's "Apply" or "Uygula"
-                            elif "apply" in button_text or "uygula" in button_text:
+                            elif "apply" in button_text or "uygula" in button_text or "başvurun" in button_text:
                                 is_easy_apply = False
                                 print("  Identified as External Apply. Attempting to get link...")
                                 
